@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Livery Submission Intake — Prequalification Tool</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold:        #C9A84C;
+    --gold-light:  #F0D98A;
+    --gold-dark:   #8B6914;
+    --blue-bg:     #EAF4FB;
+    --blue-light:  #C8E6F5;
+    --blue-mid:    #5AADD6;
+    --blue-dark:   #2A7DAE;
+    --white:       #FFFFFF;
+    --off-white:   #F4F9FD;
+    --gray-light:  #DDE9F3;
+    --gray-mid:    #7FA8C0;
+    --gray-text:   #3A6070;
+    --text:        #1A3040;
+    --radius-sm:   6px;
+    --radius-md:   10px;
+    --radius-lg:   14px;
+    --shadow:      0 2px 12px rgba(42,125,174,0.10);
+    --amber-bg:    #FDF7E8;
+    --amber-border:#E8C98A;
+    --red:         #B91C1C;
+    --red-bg:      #FEF2F2;
+    --red-border:  #FECACA;
+    --green:       #1A7A4A;
+    --green-bg:    #F0FDF4;
+    --green-border:#86EFAC;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--blue-bg); color: var(--text); min-height: 100vh; padding: 0 0 3rem; font-size: 14px; line-height: 1.6; }
+
+  header { background: var(--blue-light); border-bottom: 3px solid var(--gold); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .brand-title { font-size: 19px; font-weight: 700; color: var(--blue-dark); letter-spacing: -0.01em; }
+  .brand-sub { font-size: 12px; color: var(--gray-text); margin-top: 2px; }
+  .header-right { font-size: 12px; color: var(--blue-dark); text-align: right; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+
+  .container { max-width: 880px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
+
+  .card { background: var(--white); border: 1px solid var(--blue-light); border-left: 4px solid var(--gold); border-radius: var(--radius-lg); margin-bottom: 18px; box-shadow: var(--shadow); overflow: hidden; }
+  .card-header { display: flex; align-items: center; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--blue-light); }
+  .card-num { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: var(--blue-light); color: var(--blue-dark); border: 1.5px solid var(--blue-mid); }
+  .card-title { font-size: 14.5px; font-weight: 700; color: var(--text); flex: 1; }
+  .badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; letter-spacing: 0.04em; flex-shrink: 0; border: 1px solid; text-transform: uppercase; }
+  .badge-blue { background: var(--blue-light); color: var(--blue-dark); border-color: var(--blue-mid); }
+  .card-body { padding: 18px; }
+
+  .dropzone { border: 2px dashed var(--gray-mid); border-radius: var(--radius-md); padding: 32px 20px; text-align: center; cursor: pointer; transition: all .15s; background: var(--off-white); }
+  .dropzone.dragover { border-color: var(--gold); background: var(--amber-bg); }
+  .dropzone p { margin: 6px 0; color: var(--gray-text); font-size: 13.5px; }
+  .dropzone .accepts { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11px; color: var(--gray-mid); }
+  #fileInput { display: none; }
+
+  .file-list { list-style: none; margin: 14px 0 0; display: flex; flex-direction: column; gap: 6px; }
+  .file-list li { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--gray-light); background: var(--off-white); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; }
+  .file-list .fname { font-weight: 600; color: var(--text); }
+  .file-list .ftag { font-size: 10px; font-weight: 700; color: var(--blue-dark); background: var(--blue-light); border: 1px solid var(--blue-mid); padding: 2px 8px; border-radius: 20px; margin-left: 8px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .file-list .remove { background: none; border: none; color: var(--red); cursor: pointer; font-size: 17px; line-height: 1; padding: 0 4px; }
+
+  .primary-btn { font-family: inherit; font-weight: 700; font-size: 13.5px; background: var(--blue-dark); color: var(--white); border: none; padding: 12px 20px; cursor: pointer; border-radius: var(--radius-md); width: 100%; transition: background .15s; letter-spacing: 0.01em; }
+  .primary-btn:hover:not(:disabled) { background: var(--gold-dark); }
+  .primary-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .status { font-size: 12.5px; color: var(--gray-text); margin-top: 10px; min-height: 18px; }
+  .status.error { color: var(--red); font-weight: 600; }
+
+  .output-box { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13px; line-height: 1.75; white-space: pre-wrap; background: var(--off-white); border: 1px solid var(--gray-light); border-radius: var(--radius-md); padding: 18px; min-height: 100px; color: var(--gray-text); }
+  .output-box .red-flag { color: var(--red); font-weight: 700; }
+  .output-box:empty::before { content: "Generated submission summary will appear here."; color: var(--gray-mid); font-style: italic; }
+
+  .action-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .ghost-btn { font-family: inherit; font-weight: 700; font-size: 11.5px; background: var(--white); color: var(--blue-dark); border: 1.5px solid var(--blue-mid); padding: 8px 14px; cursor: pointer; border-radius: 20px; transition: all .15s; text-transform: uppercase; letter-spacing: 0.03em; }
+  .ghost-btn:hover { border-color: var(--gold); color: var(--gold-dark); background: var(--amber-bg); }
+  .ghost-btn.copied { border-color: var(--green) !important; color: var(--green) !important; background: var(--green-bg) !important; }
+
+  .save-row { display: flex; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-light); flex-wrap: wrap; }
+  .save-row input[type=text] { flex: 1; min-width: 180px; font-family: inherit; font-size: 13.5px; padding: 10px 12px; border: 1.5px solid var(--gray-light); border-radius: var(--radius-sm); color: var(--text); }
+  .save-row input[type=text]:focus { outline: none; border-color: var(--blue-mid); }
+  .save-btn { font-family: inherit; font-weight: 700; font-size: 13px; background: var(--gold); color: var(--white); border: none; padding: 10px 18px; cursor: pointer; border-radius: var(--radius-sm); white-space: nowrap; }
+  .save-btn:hover:not(:disabled) { background: var(--gold-dark); }
+  .save-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .saved-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .saved-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--off-white); border: 1px solid var(--gray-light); border-radius: var(--radius-md); padding: 10px 14px; }
+  .saved-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .saved-name { font-weight: 700; font-size: 13.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .saved-meta { font-size: 11px; color: var(--gray-mid); }
+  .saved-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .saved-actions button { font-family: inherit; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 20px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.03em; border: 1px solid; }
+  .load-btn { background: var(--blue-light); color: var(--blue-dark); border-color: var(--blue-mid); }
+  .load-btn:hover { background: var(--blue-mid); color: var(--white); }
+  .delete-btn { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
+  .delete-btn:hover { background: var(--red); color: var(--white); }
+
+  .empty-state { font-size: 13px; color: var(--gray-mid); font-style: italic; padding: 6px 2px; }
+
+  .hint { font-size: 11.5px; color: var(--gray-mid); line-height: 1.5; margin-top: 14px; }
+
+  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid var(--gray-light); border-top-color: var(--gold); border-radius: 50%; animation: spin .7s linear infinite; margin-right: 8px; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--blue-dark); color: white; font-size: 11.5px; font-weight: 600; padding: 7px 16px; border-radius: 20px; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 9999; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media(max-width:560px){ header{padding:1rem;} .container{padding:1.5rem 14px 3rem;} }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="brand-title">Livery Submission Intake</div>
+    <div class="brand-sub">Upload documents → prequalify → save for 30 days</div>
+  </div>
+  <div class="header-right">Commercial Auto · Livery</div>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-num">1</div>
+      <div class="card-title">Upload submission documents</div>
+      <span class="badge badge-blue">PDF · IMG · XLSX</span>
+    </div>
+    <div class="card-body">
+      <div class="dropzone" id="dropzone">
+        <p><strong>Drop files here</strong> or click to browse</p>
+        <p class="accepts">quick quote sheet · application · MVRs · loss runs</p>
+        <input type="file" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls">
+      </div>
+      <ul class="file-list" id="fileList"></ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-num">2</div>
+      <div class="card-title">Generate</div>
+    </div>
+    <div class="card-body">
+      <button class="primary-btn" id="runBtn" disabled>Add files to generate submission summary</button>
+      <div class="status" id="statusMsg"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-num">3</div>
+      <div class="card-title">Submission summary</div>
+    </div>
+    <div class="card-body">
+      <div class="output-box" id="outputBox"></div>
+      <div class="action-row">
+        <button class="ghost-btn" id="copyPlain">Copy as plain text</button>
+        <button class="ghost-btn" id="copyRich">Copy formatted (keeps red flag)</button>
+      </div>
+
+      <div class="save-row">
+        <input type="text" id="saveName" placeholder="Insured / business name to save this under…">
+        <button class="save-btn" id="saveBtn" disabled>Save prequalification</button>
+      </div>
+      <div class="hint">Saved prequalifications are kept for 30 days, then automatically removed.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-num">4</div>
+      <div class="card-title">Saved prequalifications</div>
+      <span class="badge badge-blue" id="savedCountBadge">0</span>
+    </div>
+    <div class="card-body">
+      <ul class="saved-list" id="savedList"></ul>
+      <div class="empty-state" id="savedEmpty">No saved prequalifications yet — nothing has been saved, or everything has aged past 30 days.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const fileListEl = document.getElementById('fileList');
+const runBtn = document.getElementById('runBtn');
+const statusMsg = document.getElementById('statusMsg');
+const outputBox = document.getElementById('outputBox');
+const copyPlainBtn = document.getElementById('copyPlain');
+const copyRichBtn = document.getElementById('copyRich');
+const saveNameInput = document.getElementById('saveName');
+const saveBtn = document.getElementById('saveBtn');
+const savedListEl = document.getElementById('savedList');
+const savedEmptyEl = document.getElementById('savedEmpty');
+const savedCountBadge = document.getElementById('savedCountBadge');
+const toastEl = document.getElementById('toast');
+
+let uploadedFiles = []; // { id, name, kind, media_type, data }
+let lastPlainText = '';
+let lastHtml = '';
+let lastDocTypes = [];
+
+/* ---------- upload handling ---------- */
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+function guessTag(name){
+  const n = name.toLowerCase();
+  if(n.includes('mvr') || n.includes('driver record') || n.includes('driving record')) return 'MVR';
+  if(n.includes('loss')) return 'Loss Run';
+  if(n.includes('qq') || n.includes('quote')) return 'Quick Quote Sheet';
+  if(n.includes('applic') || n.endsWith('.xlsx') || n.endsWith('.xls')) return 'Application';
+  return 'Document';
+}
+
+async function handleFiles(fileListArg){
+  for(const file of fileListArg){
+    const id = Date.now() + '-' + Math.random().toString(36).slice(2,8);
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    try{
+      if(ext === 'xlsx' || ext === 'xls'){
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, {type:'array'});
+        let dump = '';
+        wb.SheetNames.forEach(sheetName => {
+          const sheet = wb.Sheets[sheetName];
+          const csv = XLSX.utils.sheet_to_csv(sheet, {blankrows:false});
+          if(csv.trim()){ dump += `\n=== Sheet: ${sheetName} ===\n${csv}\n`; }
+        });
+        uploadedFiles.push({ id, name: file.name, kind:'text', data: dump.slice(0, 60000) });
+      } else if(ext === 'pdf'){
+        const base64 = await fileToBase64(file);
+        uploadedFiles.push({ id, name: file.name, kind:'document', media_type:'application/pdf', data: base64 });
+      } else if(['png','jpg','jpeg','webp'].includes(ext)){
+        const base64 = await fileToBase64(file);
+        const mt = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+        uploadedFiles.push({ id, name: file.name, kind:'image', media_type: mt, data: base64 });
+      } else { continue; }
+
+      const li = document.createElement('li');
+      li.dataset.id = id;
+      li.innerHTML = `<span class="fname">${escapeHtml(file.name)}<span class="ftag">${guessTag(file.name)}</span></span>`;
+      const rm = document.createElement('button');
+      rm.className = 'remove'; rm.title = 'Remove'; rm.textContent = '×';
+      rm.onclick = () => { uploadedFiles = uploadedFiles.filter(f => f.id !== id); li.remove(); updateRunBtn(); };
+      li.appendChild(rm);
+      fileListEl.appendChild(li);
+    } catch(err){ console.error('Failed to read file', file.name, err); }
+  }
+  updateRunBtn();
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function updateRunBtn(){
+  const has = uploadedFiles.length > 0;
+  runBtn.disabled = !has;
+  runBtn.textContent = has
+    ? `Generate submission summary (${uploadedFiles.length} file${uploadedFiles.length>1?'s':''})`
+    : 'Add files to generate submission summary';
+}
+
+function todayString(){
+  const d = new Date();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
+
+/* ---------- generate ---------- */
+
+runBtn.addEventListener('click', async () => {
+  runBtn.disabled = true;
+  saveBtn.disabled = true;
+  statusMsg.className = 'status';
+  statusMsg.innerHTML = '<span class="spinner"></span>Reading documents and generating summary…';
+  outputBox.innerHTML = '';
+
+  try{
+    lastDocTypes = uploadedFiles.map(f => guessTag(f.name));
+    const resp = await fetch('/.netlify/functions/extract', {
+      method: 'POST',
+      headers: {'content-type':'application/json'},
+      body: JSON.stringify({
+        today: todayString(),
+        files: uploadedFiles.map(({id, ...rest}) => rest)
+      })
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error || 'Request failed.');
+
+    renderOutput(data.result);
+    statusMsg.textContent = 'Done — review before sending or saving.';
+    saveBtn.disabled = false;
+  } catch(err){
+    statusMsg.className = 'status error';
+    statusMsg.textContent = 'Error: ' + err.message;
+  } finally {
+    runBtn.disabled = false;
+  }
+});
+
+function renderOutput(rawText){
+  lastPlainText = rawText.replace(/<RED>/g, '').replace(/<\/RED>/g, '');
+  const htmlEscaped = escapeHtml(rawText)
+    .replace(/&lt;RED&gt;/g, '<span class="red-flag">')
+    .replace(/&lt;\/RED&gt;/g, '</span>');
+  outputBox.innerHTML = htmlEscaped;
+  lastHtml = outputBox.innerHTML;
+}
+
+copyPlainBtn.addEventListener('click', async () => {
+  if(!lastPlainText) return;
+  await navigator.clipboard.writeText(lastPlainText);
+  flashCopied(copyPlainBtn);
+});
+
+copyRichBtn.addEventListener('click', async () => {
+  if(!lastHtml) return;
+  try{
+    const htmlBlob = new Blob([`<div style="font-family:monospace; white-space:pre-wrap;">${lastHtml}</div>`], {type:'text/html'});
+    const textBlob = new Blob([lastPlainText], {type:'text/plain'});
+    await navigator.clipboard.write([ new ClipboardItem({'text/html': htmlBlob, 'text/plain': textBlob}) ]);
+    flashCopied(copyRichBtn);
+  } catch(err){
+    await navigator.clipboard.writeText(lastPlainText);
+    flashCopied(copyRichBtn);
+  }
+});
+
+function flashCopied(btn){
+  const original = btn.textContent;
+  btn.textContent = 'Copied ✓';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1500);
+}
+
+/* ---------- save / list / load / delete ---------- */
+
+saveNameInput.addEventListener('input', () => {
+  saveBtn.disabled = !lastPlainText || !saveNameInput.value.trim();
+});
+
+saveBtn.addEventListener('click', async () => {
+  const name = saveNameInput.value.trim();
+  if(!name || !lastPlainText) return;
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+  try{
+    const resp = await fetch('/.netlify/functions/submissions', {
+      method: 'POST',
+      headers: {'content-type':'application/json'},
+      body: JSON.stringify({ name, summaryText: lastPlainText, docTypes: lastDocTypes })
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error || 'Save failed.');
+
+    prependSavedRow({ id: data.id, name, savedAt: data.savedAt, summaryText: lastPlainText, docTypes: lastDocTypes });
+    showToast(`Saved "${name}"`);
+    saveNameInput.value = '';
+  } catch(err){
+    showToast('Error saving: ' + err.message);
+  } finally {
+    saveBtn.textContent = 'Save prequalification';
+    saveBtn.disabled = true;
+  }
+});
+
+async function loadSavedList(){
+  try{
+    const resp = await fetch('/.netlify/functions/submissions');
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error || 'Could not load saved list.');
+    renderSavedList(data.items || []);
+  } catch(err){
+    savedEmptyEl.textContent = 'Could not load saved prequalifications: ' + err.message;
+    savedEmptyEl.style.display = 'block';
+  }
+}
+
+function renderSavedList(items){
+  savedListEl.innerHTML = '';
+  savedCountBadge.textContent = items.length;
+  savedEmptyEl.style.display = items.length ? 'none' : 'block';
+  items.forEach(item => addSavedRow(item));
+}
+
+function prependSavedRow(item){
+  savedEmptyEl.style.display = 'none';
+  addSavedRow(item, true);
+  savedCountBadge.textContent = (parseInt(savedCountBadge.textContent, 10) || 0) + 1;
+}
+
+function daysLeft(savedAt){
+  const elapsedMs = Date.now() - savedAt;
+  const left = Math.max(0, 30 - Math.floor(elapsedMs / 86400000));
+  return left;
+}
+
+function addSavedRow(item, prepend){
+  const row = document.createElement('li');
+  row.className = 'saved-row';
+  row.dataset.id = item.id;
+  const savedDate = new Date(item.savedAt);
+  const dateStr = savedDate.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+  row.innerHTML = `
+    <div class="saved-info">
+      <span class="saved-name">${escapeHtml(item.name)}</span>
+      <span class="saved-meta">Saved ${dateStr} · ${daysLeft(item.savedAt)} days left</span>
+    </div>
+    <div class="saved-actions">
+      <button class="load-btn">Load</button>
+      <button class="delete-btn">Delete</button>
+    </div>
+  `;
+  row.querySelector('.load-btn').addEventListener('click', () => {
+    renderOutput(item.summaryText);
+    saveNameInput.value = item.name;
+    saveBtn.disabled = false;
+    window.scrollTo({top: 0, behavior:'smooth'});
+    showToast(`Loaded "${item.name}"`);
+  });
+  row.querySelector('.delete-btn').addEventListener('click', async () => {
+    if(!confirm(`Delete saved prequalification "${item.name}"? This can't be undone.`)) return;
+    try{
+      const resp = await fetch(`/.netlify/functions/submissions?id=${encodeURIComponent(item.id)}`, { method: 'DELETE' });
+      if(!resp.ok) throw new Error('Delete failed.');
+      row.remove();
+      savedCountBadge.textContent = Math.max(0, (parseInt(savedCountBadge.textContent, 10) || 1) - 1);
+      if(savedListEl.children.length === 0) savedEmptyEl.style.display = 'block';
+      showToast(`Deleted "${item.name}"`);
+    } catch(err){
+      showToast('Error deleting: ' + err.message);
+    }
+  });
+  if(prepend && savedListEl.firstChild) savedListEl.insertBefore(row, savedListEl.firstChild);
+  else savedListEl.appendChild(row);
+}
+
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400);
+}
+
+loadSavedList();
+</script>
+
+</body>
+</html>
